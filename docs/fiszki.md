@@ -49,7 +49,7 @@ Wszystkie pola poza `retired` są obowiązkowe.
 `kelner` (od strony obsługi), `studia`, `firma` (własna firma online), `silownia`,
 `rodzina`, `przyjaciele`, `podroze`, `czas`, `miejsce`, `codzienne`, `praca`, `zakupy`,
 `zdrowie`, `pogoda`, `dom`, `natura`, `internet`, `sport`, `charakter`, `kultura`,
-`transport`, `pieniadze`.
+`transport`, `pieniadze`, `gramatyka` (zaimki, formy, partykuły), `liczby` (liczby, daty, godziny).
 Nowy tag → najpierw dopisz go tutaj i w `scripts/validate.mjs` (`TAGS`).
 
 ### `pl_similarity`
@@ -128,7 +128,8 @@ Przykłady:
 - `example_pl` — naturalna polszczyzna, nie tłumaczenie słowo w słowo.
 - Zwroty (`type: phrase`): gotowe formuły do użycia od razu (`Može.`, `Nema veze.`,
   `Što preporučujete?`, `Jeste li odabrali?`). Około 1/4 fiszek.
-- Pomijamy absolutne podstawy (powitania, liczebniki, kolory, dni tygodnia, miesiące).
+- Pierwsza partia pomijała absolutne podstawy; od rozbudowy do ~3700 (użytkownik zaczyna od zera)
+  liczby, dni, miesiące, kolory i godziny też są w talii (późniejsze miejsca w kolejności). Powitania nadal pomijamy.
 - Hasła HR i PL bez kropki na końcu (poza zwrotami-zdaniami, gdzie interpunkcja jest częścią formuły).
 
 ## Kolejność (`rank`)
