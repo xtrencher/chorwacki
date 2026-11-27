@@ -64,6 +64,10 @@ export function validateCards(cards, { files = [], indexFiles = [] } = {}) {
       else if (c[f] !== c[f].trim() || /\s{2,}/.test(c[f])) err(`pole „${f}” ma zbędne spacje`);
     }
     if (typeof c.note !== 'string') err('note musi być tekstem (może być pusty)');
+    if (typeof c.pl === 'string') {
+      if (/[()\[\];]|\s\/\s/.test(c.pl)) err('pl: bez nawiasów, średników i „ / ” — tylko 1–2 znaczenia');
+      if (c.type === 'word' && c.pl.split(',').length > 2) err('pl: maksymalnie 2 znaczenia (po przecinku)');
+    }
     if (!POS.has(c.pos)) err(`nieznane pos „${c.pos}”`);
     if (c.type === 'phrase' && c.pos !== 'phrase') err('zwrot (type phrase) musi mieć pos phrase');
     if (c.type === 'word' && c.pos === 'phrase') err('słowo (type word) nie może mieć pos phrase');

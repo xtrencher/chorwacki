@@ -31,7 +31,7 @@ Walidator (`npm run validate`) sprawdza część tych reguł automatycznie.
 | `id` | string `c` + min. 4 cyfry | **Stały identyfikator.** Nigdy nie zmieniany, nigdy nie używany ponownie. Nowe fiszki: kolejny wolny numer (najwyższy w repo + 1). |
 | `type` | `word` \| `phrase` | słowo albo zwrot / gotowa formuła |
 | `hr` | string | hasło chorwackie. Rzeczownik w M. l. poj., czasownik w bezokoliczniku, przymiotnik w r. m. (przy różnicy form można dodać `/ ž.`). Zwrot w formie, w jakiej się go mówi. |
-| `pl` | string | polskie znaczenie. Gdy wieloznaczne — doprecyzowanie w nawiasie: `„zamówić (w restauracji)”`. Gdy dwa hasła HR mają to samo PL — nawias musi je rozróżnić. |
+| `pl` | string | polskie znaczenie: **jedno, najwyżej dwa** (po przecinku), krótko. Bez nawiasów, średników i „ / ” — tak lepiej się zapamiętuje (decyzja użytkownika). Zwrot: jedna polska formuła. |
 | `example_hr` | string | jedno krótkie, naturalne zdanie z hasłem |
 | `example_pl` | string | naturalne polskie tłumaczenie przykładu (nie kalka) |
 | `pos` | `noun` `verb` `adj` `adv` `pron` `prep` `conj` `part` `interj` `num` `phrase` | część mowy; dla `type: phrase` zawsze `phrase` |
@@ -119,8 +119,8 @@ Przykłady:
   (rodzice przyjaciół, gość w restauracji, profesor).
   „Vi/Vaš” wielką literą, gdy to grzecznościowy zwrot do jednej osoby; do kilku osób
   (np. stolik gości) — małą: „vi, vaš”.
-- `pl` musi rozróżniać hasła o podobnym znaczeniu (np. `gotovo` „prawie (neutralne)” vs
-  `skoro` „prawie (potoczne); niedawno”; `pričati` vs `razgovarati`).
+- Aplikacja pokazuje na fiszce tylko `pl`, `hr` i przykład. `note`, `pos` i `pl_similarity`
+  zostają w danych (do przeglądów i przyszłych funkcji), ale nie są wyświetlane.
 - Tematy zdań przykładowych: studia, własna firma online, siłownia, rodzeństwo,
   przyjaciele z Chorwacji i ich rodzina, praca w restauracji (także jako kelner), wyjazdy.
 - Przykład ma pokazywać hasło w typowym kontekście i typowej formie (przypadek, rekcja).
