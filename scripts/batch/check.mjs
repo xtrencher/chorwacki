@@ -4,7 +4,7 @@
 // tier|type|hr|pl|example_hr|example_pl|pos|tags|sim|note
 //   tier: 1..5, type: w|p, sim: t|p|o|f, tags: comma-separated
 // Validates the batch with the project validator, together with existing data (duplicates).
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { validateCards } from '/home/user/chorwacki/scripts/validate.mjs';
 
 const SIM = { t: 'transparent', p: 'partial', o: 'opaque', f: 'false_friend' };
@@ -21,7 +21,7 @@ lines.forEach((ln, i) => {
   if (!SIM[sim]) errors.push(`linia ${i + 1} (${hr}): sim musi być t/p/o/f`);
   cards.push({ card: { id: `c9${String(i + 1).padStart(4, '0')}`, type: t === 'p' ? 'phrase' : 'word', hr, pl, example_hr: exh, example_pl: exp, pos, rank: 100000 + i, tags: tags.split(',').map((x) => x.trim()), pl_similarity: SIM[sim] || sim, note }, file: `linia ${i + 1}` });
 });
-const existing = JSON.parse(readFileSync('/home/user/chorwacki/data/cards-001.json', 'utf8')).map((card) => ({ card, file: 'ISTNIEJĄCE' }));
+const existing = readdirSync('/home/user/chorwacki/data').filter((f) => /^cards-.*\.json$/.test(f)).flatMap((f) => JSON.parse(readFileSync('/home/user/chorwacki/data/' + f, 'utf8'))).map((card) => ({ card, file: 'ISTNIEJĄCE' }));
 const res = validateCards([...existing, ...cards]);
 const all = [...errors, ...res.errors];
 for (const e of all) console.log('BŁĄD', e);

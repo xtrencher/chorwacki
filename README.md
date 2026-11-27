@@ -5,7 +5,7 @@ jedzenie i restauracja (także od strony kelnera), emocje i opinie.
 
 **Aplikacja:** https://xtrencher.github.io/chorwacki/ (po włączeniu GitHub Pages)
 
-- Ok. 2700 fiszek (słowa i zwroty): rozmowa, restauracja (też od strony kelnera), emocje, podróże, praca, język potoczny.
+- Ok. 3500 fiszek (słowa i zwroty): rozmowa, restauracja (też od strony kelnera), emocje, podróże, praca, język potoczny.
 - PWA: instalacja na ekranie głównym telefonu, działa offline, aktualizuje się sama.
 - Powtórki w algorytmie FSRS (biblioteka ts-fsrs): dzienne minimum + kolejne sesje po 10.
 - Wymowa przez syntezę mowy telefonu (gdy jest głos chorwacki).
