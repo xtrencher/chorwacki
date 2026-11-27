@@ -559,7 +559,8 @@ async function boot() {
     app.innerHTML = `<div class="panel"><h2>Nie udało się wczytać fiszek</h2><p>${esc(e.message)}</p><p>Sprawdź połączenie i odśwież.</p></div>`;
     return;
   }
-  await initSpeech();
+  // voices load in the background; the speaker icon appears on the next card once one is found
+  initSpeech();
   if (isStandalone()) requestPersist();
   go(device.onboardingDone ? 'home' : 'onboarding');
 }

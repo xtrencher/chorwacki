@@ -5,7 +5,7 @@
 // gets the newest files; offline it uses the last cached copy.
 // RULE: bump VERSION on every app change (new SW → old caches deleted, clients reloaded).
 
-const VERSION = '2026-11-27.6';
+const VERSION = '2026-11-27.7';
 const CACHE = `chorwacki-${VERSION}`;
 const NETWORK_TIMEOUT_MS = 4000;
 
@@ -23,6 +23,11 @@ const PRECACHE = [
   './vendor/ts-fsrs/index.mjs',
   './data/index.json',
   './data/cards-001.json',
+  './data/cards-002.json',
+  './data/cards-003.json',
+  './data/cards-004.json',
+  './data/cards-005.json',
+  './data/cards-006.json',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
