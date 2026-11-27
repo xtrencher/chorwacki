@@ -28,6 +28,7 @@ sw.js                   service worker (cache offline, aktualizacje)
 data/index.json         lista plików z fiszkami
 data/cards-*.json       fiszki
 docs/fiszki.md          schemat fiszki + wytyczne językowe (OBOWIĄZKOWA lektura przed edycją danych)
+docs/backlog.md         luki i decyzje do podjęcia w kolejnych partiach
 scripts/validate.mjs    walidacja danych
 tests/*.test.mjs        testy (node:test)
 vendor/                 zależności (ts-fsrs)
@@ -86,8 +87,9 @@ Node ≥ 20. Brak `npm install` — nie ma zależności.
 
 ## Etapy
 
-1. **(bieżący)** Zasady, aplikacja PWA, walidacja + testy, pierwsze 300 fiszek
-   (rank wg listy frekwencyjnej + priorytety), przegląd subagentem.
+1. **(zrobione)** Zasady, aplikacja PWA, walidacja + testy, pierwsza partia 305 fiszek
+   (rank wg listy frekwencyjnej + priorytety), przegląd subagentem i poprawki.
+   Niewprowadzone uwagi z przeglądu: `docs/backlog.md`.
 2. Poprawki po uwagach i zgłoszeniach użytkownika, wybór tematu dla nowych fiszek
    (np. restauracja przed wyjazdem), rozbudowa do ok. 1000 fiszek.
 3. Automatyczna synchronizacja postępu (np. prywatny gist), kolejne partie

@@ -12,17 +12,17 @@ Walidator (`npm run validate`) sprawdza część tych reguł automatycznie.
 
 ```json
 {
-  "id": "c0042",
+  "id": "c0074",
   "type": "word",
-  "hr": "kruh",
-  "pl": "chleb",
-  "example_hr": "Možeš li kupiti kruh na putu kući?",
-  "example_pl": "Możesz kupić chleb w drodze do domu?",
+  "hr": "juha",
+  "pl": "zupa",
+  "example_hr": "Juha je prevruća.",
+  "example_pl": "Zupa jest za gorąca.",
   "pos": "noun",
-  "rank": 42,
-  "tags": ["jedzenie"],
+  "rank": 76,
+  "tags": ["jedzenie", "restauracja"],
   "pl_similarity": "false_friend",
-  "note": "⚠ Fałszywy przyjaciel: nie „kruchy”. Rodz. m. (taj kruh)."
+  "note": "⚠ Fałszywy przyjaciel: juha = zupa, a nie „jucha”. Rodz. ž."
 }
 ```
 
@@ -117,6 +117,10 @@ Przykłady:
   Nie podręcznikowe „Ovo je stol”.
 - Rejestr: **„ti” wobec rówieśników**, **„Vi” (wielką literą) wobec starszych**
   (rodzice przyjaciół, gość w restauracji, profesor).
+  „Vi/Vaš” wielką literą, gdy to grzecznościowy zwrot do jednej osoby; do kilku osób
+  (np. stolik gości) — małą: „vi, vaš”.
+- `pl` musi rozróżniać hasła o podobnym znaczeniu (np. `gotovo` „prawie (neutralne)” vs
+  `skoro` „prawie (potoczne); niedawno”; `pričati` vs `razgovarati`).
 - Tematy zdań przykładowych: studia, własna firma online, siłownia, rodzeństwo,
   przyjaciele z Chorwacji i ich rodzina, praca w restauracji (także jako kelner), wyjazdy.
 - Przykład ma pokazywać hasło w typowym kontekście i typowej formie (przypadek, rekcja).
