@@ -5,9 +5,9 @@ jedzenie i restauracja (także od strony kelnera), emocje i opinie.
 
 **Aplikacja:** https://xtrencher.github.io/chorwacki/ (po włączeniu GitHub Pages)
 
+- Ok. 2700 fiszek (słowa i zwroty): rozmowa, restauracja (też od strony kelnera), emocje, podróże, praca, język potoczny.
 - PWA: instalacja na ekranie głównym telefonu, działa offline, aktualizuje się sama.
-- Powtórki w algorytmie FSRS (biblioteka ts-fsrs), sesja dzienna na 10–15 minut.
-- Przesiew: szybkie odhaczanie słów, które już znasz.
+- Powtórki w algorytmie FSRS (biblioteka ts-fsrs): dzienne minimum + kolejne sesje po 10.
 - Wymowa przez syntezę mowy telefonu (gdy jest głos chorwacki).
 - Postęp zapisany na urządzeniu; eksport/import do pliku (import scala postęp z kilku urządzeń).
 
@@ -30,7 +30,7 @@ Bez zależności i bez kroku budowania — pliki w repo są stroną.
   Licencja treści list: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/),
   kod repozytorium: MIT, © Hermit Dave. Lista nie jest kopiowana do tego repozytorium —
   wykorzystano ją tylko do ustalenia kolejności, łącznie z priorytetami tematycznymi.
-  W pierwszej partii (przed przeglądem, 227 słów) 96 należy do 1000 najczęstszych form, 154 do 3000 najczęstszych.
+  Kolejne partie: ważność dla rozmowy (ocena 1–5) → częstość w korpusie; zwroty przeplatane ze słowami.
 - **Algorytm powtórek** — [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) 5.4.2,
   licencja MIT, plik w `vendor/ts-fsrs/` (z licencją obok).
 - **Treść fiszek** (hasła, przykłady, notatki) — napisana na potrzeby tego projektu.

@@ -105,7 +105,8 @@ Odpowiedzi do użytkownika: krótko.
 1. **(zrobione)** Zasady, aplikacja PWA, walidacja + testy, pierwsza partia 305 fiszek
    (rank wg listy frekwencyjnej + priorytety), przegląd subagentem i poprawki.
    Niewprowadzone uwagi z przeglądu: `docs/backlog.md`.
-2. **(w toku)** Uproszczenie UI po pierwszym teście (zrobione), poprawki treści, wybór tematu dla nowych fiszek
+2. **(zrobione)** Uproszczenie UI po pierwszym teście; rozbudowa do 2669 fiszek (9 partii
+   tematycznych + przegląd 5 recenzentów). Poprawki treści, wybór tematu dla nowych fiszek
    (np. restauracja przed wyjazdem), rozbudowa do ok. 1000 fiszek.
 3. Automatyczna synchronizacja postępu (np. prywatny gist), kolejne partie
    po 300–500 aż do 3000, eksport talii do Anki.
