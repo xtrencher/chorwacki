@@ -6,7 +6,7 @@ import {
   createState, mergeStates, mergeCardEntry, exportProgress, parseImport, ImportError, addReport, activeReports,
   clearReports, formatReports, updateSettings, backupReminderDue, normalizeState, SCHEMA,
 } from '../js/state.js';
-import { createScheduler, rateCard, sieveCard, Rating, planSession } from '../js/session.js';
+import { createScheduler, rateCard, Rating, planSession } from '../js/session.js';
 
 const f = createScheduler();
 const D1 = T('2026-11-20T10:00:00+01:00');
@@ -21,9 +21,9 @@ function phoneAndLaptop() {
   phone = rateCard(f, phone, 'c0002', Rating.Again, D3).state; // newer on phone
   phone = addReport(phone, 'c0001', 'literówka', D1, () => 0.1);
   let laptop = createState();
-  laptop = rateCard(f, laptop, 'c0002', Rating.Easy, D2).state; // older than phone's c0002
-  laptop = rateCard(f, laptop, 'c0001', Rating.Easy, D2).state; // newer than phone's c0001
-  laptop = sieveCard(f, laptop, 'c0003', true, D2);
+  laptop = rateCard(f, laptop, 'c0002', Rating.Good, D2).state; // older than phone's c0002
+  laptop = rateCard(f, laptop, 'c0001', Rating.Good, D2).state; // newer than phone's c0001
+  laptop = rateCard(f, laptop, 'c0003', Rating.Good, D2).state;
   laptop = addReport(laptop, 'c0003', 'dziwne zdanie', D2, () => 0.2);
   laptop = updateSettings(laptop, { newPerDay: 15 }, D2);
   return { phone, laptop };
@@ -50,12 +50,12 @@ test('scalanie jest przemienne i idempotentne', () => {
 });
 
 test('scalanie: remis czasu rozstrzygany deterministycznie', () => {
-  const a = { fsrs: null, updated: D1.toISOString(), introduced: null, sieve: 'unknown' };
-  const b = { fsrs: null, updated: D1.toISOString(), introduced: null, sieve: 'known' };
+  const a = { fsrs: null, updated: D1.toISOString(), introduced: null };
+  const b = { fsrs: null, updated: D1.toISOString(), introduced: '2026-11-20' };
   assert.deepEqual(mergeCardEntry(a, b), mergeCardEntry(b, a));
 });
 
-test('scalanie: kalendarz — maksimum na dzień, seria się nie dubluje', () => {
+test('scalanie: kalendarz — maksimum na dzień, stare pole sieved zachowane', () => {
   const a = createState();
   a.days = { '2026-11-20': { reviews: 5, sieved: 0 }, '2026-11-21': { reviews: 1, sieved: 0 } };
   const b = createState();

@@ -20,18 +20,6 @@
   <main id="app" aria-live="polite">
     <p class="loading">Wczytywanie…</p>
   </main>
-  <dialog id="report-dialog">
-    <form method="dialog" class="dialog-body">
-      <h2>Zgłoś fiszkę</h2>
-      <p class="muted" id="report-card"></p>
-      <label for="report-note">Co jest nie tak?</label>
-      <textarea id="report-note" rows="3" maxlength="500" placeholder="np. dziwne zdanie, literówka, serbska forma…"></textarea>
-      <div class="row">
-        <button value="cancel" class="btn">Anuluj</button>
-        <button value="ok" class="btn primary" id="report-save">Zapisz</button>
-      </div>
-    </form>
-  </dialog>
   <div id="toast" class="toast" role="status" hidden></div>
   <noscript>Ta aplikacja wymaga JavaScriptu.</noscript>
   <script type="module" src="./js/app.js"></script>

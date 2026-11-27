@@ -5,7 +5,7 @@
 // gets the newest files; offline it uses the last cached copy.
 // RULE: bump VERSION on every app change (new SW → old caches deleted, clients reloaded).
 
-const VERSION = '2026-11-27.3';
+const VERSION = '2026-11-27.4';
 const CACHE = `chorwacki-${VERSION}`;
 const NETWORK_TIMEOUT_MS = 4000;
 

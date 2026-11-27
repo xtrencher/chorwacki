@@ -1,27 +1,25 @@
-// Daily session and sieve logic. Pure — no DOM, no storage.
+// Daily session logic. Pure — no DOM, no storage.
 // Scheduling is done by ts-fsrs; this module only decides WHAT to show and WHEN.
 
 import { fsrs, generatorParameters, createEmptyCard, Rating, State } from '../vendor/ts-fsrs/index.mjs';
 
 export { Rating, State };
 
-/** UI grades in display order: nie wiedziałem / trudne / dobrze / łatwe */
+/** Two answers only: "Ne znam" (Again) and "Znam" (Good). */
 export const GRADES = [
-  { rating: Rating.Again, label: 'Nie wiem', key: '1' },
-  { rating: Rating.Hard, label: 'Trudne', key: '2' },
-  { rating: Rating.Good, label: 'Dobrze', key: '3' },
-  { rating: Rating.Easy, label: 'Łatwe', key: '4' },
+  { rating: Rating.Again, label: 'Ne znam', key: '1' },
+  { rating: Rating.Good, label: 'Znam', key: '2' },
 ];
 
-/** Interval given to cards marked "wiedziałem" in the sieve. */
-export const SIEVE_KNOWN_DAYS = 60;
-/** Cards coming back within this many minutes are shown again in the same session. */
-export const RELEARN_WINDOW_MIN = 20;
-/** A card answered with a short step comes back after this many other cards. */
+/** A card answered "Ne znam" comes back after this many other cards in the same session. */
 export const REQUEUE_GAP = 4;
 
+/**
+ * One 10-minute (re)learning step: "Znam" on a new card graduates it at once
+ * (comes back in ~2 days), "Ne znam" brings it back later in the same session.
+ */
 export function createScheduler() {
-  return fsrs(generatorParameters({ enable_fuzz: true, request_retention: 0.9 }));
+  return fsrs(generatorParameters({ enable_fuzz: true, request_retention: 0.9, learning_steps: ['10m'], relearning_steps: ['10m'] }));
 }
 
 // ---------- dates ----------
@@ -98,47 +96,68 @@ export function introducedToday(state, now) {
   return Object.values(state.cards).filter((e) => e.introduced === today).length;
 }
 
+/** Cards answered today that are finished for today (not due again before midnight). */
+export function doneTodayIds(cards, state, now) {
+  const today = dayKey(now);
+  const limit = endOfDay(now).getTime();
+  return activeCards(cards)
+    .filter((c) => {
+      const e = state.cards[c.id];
+      return !isNew(e) && e.fsrs.last_review && dayKey(e.fsrs.last_review) === today && Date.parse(e.fsrs.due) > limit;
+    })
+    .map((c) => c.id);
+}
+
+function dayRecord(state, now) {
+  return state.days[dayKey(now)] || { reviews: 0 };
+}
+
 // ---------- daily session ----------
 
 /**
- * Plan today's session: due reviews first (capped), then new cards by rank,
- * up to the daily limit. With a big backlog no new cards are added.
+ * Plan what is left for today: due reviews first (capped), then new cards by rank.
+ * New limit = daily minimum (newPerDay) + extra sessions started today.
+ * With a big backlog no new cards are added. Derived from the saved state only,
+ * so leaving the app and coming back continues the same day ("2 / 10").
  */
-export function planSession(cards, state, now = new Date()) {
+export function planSession(cards, state, now = new Date(), { includeExtra = true } = {}) {
   const s = state.settings;
   const due = dueIds(cards, state, now);
   const backlog = due.length > s.backlogThreshold;
   const reviews = due.slice(0, s.maxReviews);
-  const remainingNew = backlog ? 0 : Math.max(0, s.newPerDay - introducedToday(state, now));
+  const extra = includeExtra ? dayRecord(state, now).extraNew || 0 : 0;
+  const remainingNew = backlog ? 0 : Math.max(0, s.newPerDay + extra - introducedToday(state, now));
   const news = newIds(cards, state).slice(0, remainingNew);
-  return { reviews, news, backlog, dueTotal: due.length, queue: [...reviews, ...news] };
+  const done = doneTodayIds(cards, state, now).length;
+  const queue = [...reviews, ...news];
+  return { reviews, news, backlog, dueTotal: due.length, queue, done, total: done + queue.length };
 }
 
-/** Preview of the next interval per grade, for button labels. */
-export function previewIntervals(scheduler, entry, now = new Date()) {
-  const card = isNew(entry) ? createEmptyCard(now) : deserializeCard(entry.fsrs);
-  const out = {};
-  for (const g of GRADES) {
-    const next = scheduler.next(card, now, g.rating).card;
-    out[g.rating] = formatInterval(next.due.getTime() - now.getTime());
-  }
-  return out;
+/** Daily minimum done: something learned today and nothing left of the base plan. */
+export function goalMetToday(cards, state, now = new Date()) {
+  const d = dayRecord(state, now);
+  if (d.goalMet) return true;
+  return (d.reviews || 0) > 0 && planSession(cards, state, now, { includeExtra: false }).queue.length === 0;
 }
 
-export function formatInterval(ms) {
-  const min = Math.max(1, Math.round(ms / 60000));
-  if (min < 60) return `${min} min`;
-  const h = Math.round(min / 60);
-  if (h < 24) return `${h} h`;
-  const d = Math.round(min / 1440);
-  if (d < 31) return `${d} d`;
-  const mo = Math.round(d / 30);
-  if (mo < 12) return `${mo} mies.`;
-  return `${(d / 365).toFixed(1)} r.`;
+/** Mark today's minimum as done (sticky, merged with OR between devices). */
+export function markGoal(cards, state, now = new Date()) {
+  const today = dayKey(now);
+  const d = dayRecord(state, now);
+  if (d.goalMet || !goalMetToday(cards, state, now)) return state;
+  return { ...state, days: { ...state.days, [today]: { ...d, goalMet: true } } };
+}
+
+/** "Ucz się dalej": another session of newPerDay new cards today. */
+export function addExtraSession(state, now = new Date()) {
+  const today = dayKey(now);
+  const d = dayRecord(state, now);
+  const step = state.settings.newPerDay || 10;
+  return { ...state, days: { ...state.days, [today]: { ...d, extraNew: (d.extraNew || 0) + step } } };
 }
 
 /**
- * Apply a grade. Returns { state, entry, requeue } where requeue is true when the
+ * Apply an answer. Returns { state, entry, requeue } where requeue is true when the
  * card should come back later in the same session (short learning step).
  */
 export function rateCard(scheduler, state, cardId, rating, now = new Date()) {
@@ -151,15 +170,14 @@ export function rateCard(scheduler, state, cardId, rating, now = new Date()) {
     updated: now.toISOString(),
     introduced: wasNew ? dayKey(now) : prev.introduced ?? null,
   };
-  if (prev && prev.sieve) entry.sieve = prev.sieve;
   const today = dayKey(now);
-  const day = state.days[today] || { reviews: 0, sieved: 0 };
+  const day = dayRecord(state, now);
   const newState = {
     ...state,
     cards: { ...state.cards, [cardId]: entry },
-    days: { ...state.days, [today]: { ...day, reviews: (day.reviews || 0) + 1 } },
+    days: { ...state.days, [today]: { ...day, goalMet: day.goalMet ?? false, reviews: (day.reviews || 0) + 1 } },
   };
-  const requeue = next.due.getTime() - now.getTime() <= RELEARN_WINDOW_MIN * 60000;
+  const requeue = next.due.getTime() <= endOfDay(now).getTime();
   return { state: newState, entry, requeue };
 }
 
@@ -170,9 +188,14 @@ export function requeueCard(queue, cardId) {
   return q;
 }
 
-/** Session runner state machine (pure). */
+/** Session runner state (pure). `done` starts from what was already finished today. */
 export function startSession(plan) {
-  return { queue: plan.queue.slice(), done: 0, total: plan.queue.length, again: 0 };
+  return { queue: plan.queue.slice(), done: plan.done || 0, again: 0 };
+}
+
+export function sessionProgress(session) {
+  const left = new Set(session.queue).size;
+  return { done: session.done, total: session.done + left };
 }
 
 export function answer(session, scheduler, state, rating, now = new Date()) {
@@ -189,39 +212,6 @@ export function answer(session, scheduler, state, rating, now = new Date()) {
   };
 }
 
-// ---------- sieve ----------
-
-/** Cards not yet seen in any way (not reviewed, not sieved), by rank. */
-export function sieveCandidates(cards, state) {
-  return activeCards(cards)
-    .filter((c) => !state.cards[c.id])
-    .map((c) => c.id);
-}
-
-/**
- * known  → scheduled straight away with a long interval; does NOT count to the daily new limit.
- * !known → stays new (fsrs: null), just marked so the sieve skips it next time.
- */
-export function sieveCard(scheduler, state, cardId, known, now = new Date()) {
-  let entry;
-  if (known) {
-    const base = scheduler.next(createEmptyCard(now), now, Rating.Easy).card;
-    const days = SIEVE_KNOWN_DAYS;
-    const due = new Date(now.getTime() + days * 86400000);
-    const c = { ...base, state: State.Review, stability: Math.max(base.stability, days), scheduled_days: days, due, learning_steps: 0 };
-    entry = { fsrs: serializeCard(c), updated: now.toISOString(), introduced: null, sieve: 'known' };
-  } else {
-    entry = { fsrs: null, updated: now.toISOString(), introduced: null, sieve: 'unknown' };
-  }
-  const today = dayKey(now);
-  const day = state.days[today] || { reviews: 0, sieved: 0 };
-  return {
-    ...state,
-    cards: { ...state.cards, [cardId]: entry },
-    days: { ...state.days, [today]: { ...day, sieved: (day.sieved || 0) + 1 } },
-  };
-}
-
 // ---------- stats ----------
 
 export function stats(cards, state, now = new Date()) {
@@ -235,20 +225,28 @@ export function stats(cards, state, now = new Date()) {
     dueToday: dueIds(cards, state, now).length,
     newLeft: newIds(cards, state).length,
     streak: streak(state, now),
+    goalMet: goalMetToday(cards, state, now),
   };
 }
 
-/** Consecutive days with activity, ending today (or yesterday if nothing done yet today). */
+/**
+ * Streak = consecutive days with the daily minimum done, ending today
+ * (or yesterday if today's minimum is not done yet).
+ * Days saved before goals existed count when there was any activity.
+ */
 export function streak(state, now = new Date()) {
-  const active = (k) => {
+  const today = dayKey(now);
+  const met = (k) => {
     const d = state.days[k];
-    return !!d && (d.reviews || 0) + (d.sieved || 0) > 0;
+    if (!d) return false;
+    if (d.goalMet !== undefined) return !!d.goalMet;
+    return k < today && (d.reviews || 0) + (d.sieved || 0) > 0;
   };
   const d = new Date(now);
   d.setHours(12, 0, 0, 0);
-  if (!active(dayKey(d))) d.setDate(d.getDate() - 1);
+  if (!met(dayKey(d))) d.setDate(d.getDate() - 1);
   let n = 0;
-  while (active(dayKey(d))) {
+  while (met(dayKey(d))) {
     n += 1;
     d.setDate(d.getDate() - 1);
   }

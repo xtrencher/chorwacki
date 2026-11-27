@@ -5,11 +5,11 @@
 //   schema: 1,
 //   cards: { [cardId]: CardEntry },
 //   reports: [ { id, cardId, note, at, deleted? } ],
-//   days: { 'YYYY-MM-DD': { reviews, sieved } },
+//   days: { 'YYYY-MM-DD': { reviews, goalMet, extraNew } },
 //   settings: { newPerDay, direction, updated }
 // }
-// CardEntry: { fsrs: SerializedFsrsCard | null, updated: ISO, introduced: 'YYYY-MM-DD' | null, sieve?: 'known' | 'unknown' }
-//   fsrs === null  → card is still "new" (e.g. marked "nie wiedziałem" in the sieve)
+// CardEntry: { fsrs: SerializedFsrsCard | null, updated: ISO, introduced: 'YYYY-MM-DD' | null }
+//   fsrs === null  → card is still "new" (legacy: entries from the removed sieve may also carry `sieve`)
 //   updated        → time of the last review / sieve decision; the newer entry wins on merge
 
 export const SCHEMA = 1;
@@ -78,7 +78,15 @@ function mergeDays(da, db) {
   for (const k of new Set([...Object.keys(da), ...Object.keys(db)])) {
     const a = da[k] || {};
     const b = db[k] || {};
-    out[k] = { reviews: Math.max(a.reviews || 0, b.reviews || 0), sieved: Math.max(a.sieved || 0, b.sieved || 0) };
+    const d = { reviews: Math.max(a.reviews || 0, b.reviews || 0) };
+    const sieved = Math.max(a.sieved || 0, b.sieved || 0); // legacy field (sieve removed)
+    if (sieved) d.sieved = sieved;
+    const extra = Math.max(a.extraNew || 0, b.extraNew || 0);
+    if (extra) d.extraNew = extra;
+    // daily minimum: true wins; explicit false beats "unknown" (days from before goals existed)
+    if (a.goalMet || b.goalMet) d.goalMet = true;
+    else if (a.goalMet === false || b.goalMet === false) d.goalMet = false;
+    out[k] = d;
   }
   return out;
 }

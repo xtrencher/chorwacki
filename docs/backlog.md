@@ -18,7 +18,7 @@ Uwagi z przeglądu pierwszej partii (subagent, etap 1), jeszcze niewprowadzone.
 - Zapis par aspektowych, gdy „para” to raczej czasownik pokrewny o innym znaczeniu
   (saznati, zatrebati, zaspati, otputovati) — np. „para: brak (pokrewny dk.: saznati = dowiedzieć się)”.
 
-## Uwagi użytkownika po pierwszym teście na telefonie (do zrobienia w etapie 2)
+## Uwagi użytkownika po pierwszym teście na telefonie — ZROBIONE (etap 2)
 
 Zapisane tak, jak zostały przekazane. Priorytet: prostota, mniej tekstu, szybkość.
 
@@ -45,3 +45,4 @@ Zapisane tak, jak zostały przekazane. Priorytet: prostota, mniej tekstu, szybko
     (wchodzisz i klikasz).
 12. **Usunąć przesiew** (decyzja użytkownika: zakładamy, że nie zna słów; wszystkie idą przez normalną naukę).
 13. Odpowiedzi do użytkownika: krótko, bez długich wyjaśnień.
+14. **Kolejne sesje tego samego dnia** po dziennym minimum (po 10 nowych) — zrobione.

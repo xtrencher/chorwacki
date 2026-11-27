@@ -2,13 +2,10 @@
 import { loadCards, indexById } from './data.js';
 import { loadProgress, saveProgress, loadDevice, saveDevice, requestPersist, isPersisted } from './storage.js';
 import { initSpeech, hasVoice, speak } from './speech.js';
+import { mergeStates, exportProgress, parseImport, ImportError, updateSettings, backupReminderDue } from './state.js';
 import {
-  mergeStates, exportProgress, parseImport, ImportError, addReport, activeReports, clearReports,
-  formatReports, updateSettings, backupReminderDue,
-} from './state.js';
-import {
-  createScheduler, planSession, startSession, answer, previewIntervals, GRADES, Rating,
-  sieveCandidates, sieveCard, stats, dayKey,
+  createScheduler, planSession, startSession, answer, sessionProgress, GRADES, Rating, stats, dayKey,
+  markGoal, addExtraSession,
 } from './session.js';
 
 const app = document.getElementById('app');
@@ -22,6 +19,7 @@ let view = 'home';
 let pendingReload = false;
 let installEvent = null;
 let swVersion = '';
+let keyHandler = null;
 
 // ---------- helpers ----------
 
@@ -48,8 +46,7 @@ function toast(msg, ms = 2600) {
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = () => /Android/i.test(navigator.userAgent);
-
-const POS = { noun: 'rzeczownik', verb: 'czasownik', adj: 'przymiotnik', adv: 'przysłówek', pron: 'zaimek', prep: 'przyimek', conj: 'spójnik', part: 'partykuła', interj: 'wykrzyknik', num: 'liczebnik', phrase: 'zwrot' };
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function plural(n, one, few, many) {
   if (n === 1) return one;
@@ -58,8 +55,13 @@ function plural(n, one, few, many) {
   return d >= 2 && d <= 4 && (t < 12 || t > 14) ? few : many;
 }
 
-function sayButton(text, label) {
-  return `<button class="say" data-say="${esc(text)}" aria-label="${esc(label)}" ${hasVoice() ? '' : 'hidden'}>🔊</button>`;
+const ICON_SPEAKER = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+const ICON_GEAR = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+const ICON_FLAME = '<svg viewBox="0 0 24 24" width="56" height="56" aria-hidden="true"><path fill="currentColor" d="M12 2c.6 3.2-1 5.3-2.6 7.2C7.9 11 6.5 12.7 6.5 15.3 6.5 18.9 9 22 12 22s5.5-3 5.5-6.6c0-2.6-1.3-4.6-2.6-6.1-.2 1.5-.9 2.6-2 3.1.4-3.6-.1-7.6-.9-10.4z"/></svg>';
+
+function sayButton(text, label, cls = '') {
+  if (!hasVoice()) return '';
+  return `<button class="say ${cls}" data-say="${esc(text)}" aria-label="${esc(label)}">${ICON_SPEAKER}</button>`;
 }
 
 function go(v, ...args) {
@@ -72,81 +74,105 @@ function go(v, ...args) {
   VIEWS[v](...args);
 }
 
-// ---------- views ----------
+const VIEWS = { home, onboarding, review, settings };
 
-const VIEWS = { home, onboarding, review, sieve, done, settings };
+// ---------- home ----------
 
 function home() {
-  const st = stats(cards, state, new Date());
-  const plan = planSession(cards, state, new Date());
-  const showBackup = backupReminderDue(device, state, new Date());
-  const nothing = plan.queue.length === 0;
+  const now = new Date();
+  const today = dayKey(now);
+  const st = stats(cards, state, now);
+  const plan = planSession(cards, state, now);
+  const showBackup = backupReminderDue(device, state, now);
+  const celebrate = st.goalMet && device.celebratedDay !== today && !reducedMotion();
+
+  let sessionPanel;
+  if (plan.queue.length) {
+    const pct = Math.round((plan.done / Math.max(1, plan.total)) * 100);
+    sessionPanel = `
+      <div class="today-row"><span>Dziś</span><b>${plan.done} / ${plan.total}</b></div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      ${plan.backlog ? `<p class="muted small">Dużo zaległych powtórek (${plan.dueTotal}) — dziś bez nowych fiszek.</p>` : ''}
+      <button class="btn primary block" id="start">${plan.done ? 'Kontynuuj' : 'Zacznij naukę'}</button>`;
+  } else if (st.newLeft > 0) {
+    sessionPanel = `
+      <div class="today-row"><span>Dzisiejsze minimum</span><b>✓</b></div>
+      <button class="btn primary block" id="more">Ucz się dalej (+${state.settings.newPerDay || 10})</button>`;
+  } else {
+    sessionPanel = `<div class="today-row"><span>Wszystkie fiszki poznane</span><b>✓</b></div>
+      <p class="muted small">Wróć jutro na powtórki.</p>`;
+  }
+
   app.innerHTML = `
     <div class="topbar">
       <h1>Chorwacki</h1>
-      <button class="btn ghost icon" data-go="settings" aria-label="Ustawienia">⚙️</button>
+      <button class="icon-btn" data-go="settings" aria-label="Ustawienia">${ICON_GEAR}</button>
     </div>
     ${showBackup ? `
-      <div class="panel warn">
-        <h2>Zrób kopię postępu</h2>
-        <p>Minął tydzień od ostatniej kopii. Zapisz plik — w razie utraty telefonu odzyskasz postęp.</p>
+      <div class="panel">
+        <p><b>Zrób kopię postępu</b> — minął tydzień od ostatniej.</p>
         <div class="row">
-          <button class="btn primary" id="backup-now">Zapisz kopię</button>
-          <button class="btn" id="backup-later">Później</button>
+          <button class="btn" id="backup-now">Zapisz kopię</button>
+          <button class="btn ghost" id="backup-later">Później</button>
         </div>
       </div>` : ''}
-    <div class="stats">
-      <div class="panel stat"><b>${st.known}</b><span>poznane<br>z ${st.total}</span></div>
-      <div class="panel stat"><b>${st.dueToday}</b><span>do powtórki<br>dziś</span></div>
-      <div class="panel stat"><b>${st.streak}</b><span>seria<br>${plural(st.streak, 'dzień', 'dni', 'dni')}</span></div>
+    <div class="streak ${st.goalMet ? 'lit' : ''} ${celebrate ? 'pop' : ''}">
+      <div class="flame">${ICON_FLAME}</div>
+      <div class="streak-num" id="streak-num">${celebrate ? Math.max(0, st.streak - 1) : st.streak}</div>
+      <div class="streak-label">${plural(st.streak, 'dzień', 'dni', 'dni')} z rzędu</div>
+      ${st.goalMet ? '' : '<div class="muted small">Zrób dzisiejsze minimum, żeby utrzymać serię</div>'}
     </div>
-    <div class="panel">
-      ${nothing
-        ? `<h2>Na dziś wszystko 🎉</h2><p class="muted">Wróć jutro. Jeśli chcesz więcej, zrób przesiew albo zwiększ limit nowych fiszek w ustawieniach.</p>`
-        : `<h2>Dzisiejsza sesja</h2>
-           <p>${plan.reviews.length} ${plural(plan.reviews.length, 'powtórka', 'powtórki', 'powtórek')} · ${plan.news.length} ${plural(plan.news.length, 'nowa', 'nowe', 'nowych')}</p>
-           ${plan.backlog ? `<p class="muted small">Dużo zaległości (${plan.dueTotal}) — dziś bez nowych fiszek, najpierw nadrób powtórki.</p>` : ''}
-           <button class="btn primary block" id="start">Zacznij naukę</button>`}
+    <div class="mini-stats muted small">
+      <span>Poznane: <b>${st.known}</b> / ${st.total}</span>
+      <span>Do powtórki dziś: <b>${st.dueToday}</b></span>
     </div>
-    <div class="panel">
-      <h2>Przesiew</h2>
-      <p class="muted">Szybko przejrzyj nowe fiszki i odhacz te, które już znasz — dostaną długi odstęp i nie zajmą dziennego limitu.</p>
-      <button class="btn block" id="sieve" ${st.newLeft === 0 ? 'disabled' : ''}>Przesiej nowe fiszki (${sieveCandidates(cards, state).length})</button>
-    </div>
+    <div class="spacer"></div>
+    <div class="panel session-panel">${sessionPanel}</div>
   `;
   bindGo();
   const start = document.getElementById('start');
-  if (start) start.onclick = () => go('review', startSession(plan));
-  document.getElementById('sieve').onclick = () => go('sieve', { known: 0, unknown: 0 });
+  if (start) start.onclick = () => startReview();
+  const more = document.getElementById('more');
+  if (more) more.onclick = () => { setState(addExtraSession(state, new Date())); startReview(); };
   const bn = document.getElementById('backup-now');
   if (bn) bn.onclick = () => exportBackup().then(() => go('home'));
   const bl = document.getElementById('backup-later');
   if (bl) bl.onclick = () => { setDevice({ lastBackupReminderAt: new Date().toISOString() }); go('home'); };
+  keyHandler = (e) => { if (e.key === 'Enter' && (start || more)) (start || more).click(); };
+
+  if (celebrate) {
+    setDevice({ celebratedDay: today });
+    setTimeout(() => {
+      const n = document.getElementById('streak-num');
+      if (n) n.textContent = String(st.streak);
+    }, 350);
+  }
 }
+
+// ---------- onboarding ----------
 
 function installInstructions() {
   if (isIOS()) {
     return `
-      <p><b>iPhone / iPad:</b> na iOS postęp nauki z Safari <b>nie przenosi się</b> do zainstalowanej aplikacji — dlatego zainstaluj ją, zanim zaczniesz.</p>
+      <p>Na iPhonie postęp z Safari <b>nie przenosi się</b> do zainstalowanej aplikacji — zainstaluj ją, zanim zaczniesz.</p>
       <ol class="steps">
         <li>Otwórz tę stronę w <b>Safari</b>.</li>
-        <li>Stuknij <b>Udostępnij</b> <span class="key">⬆︎</span> (na dole ekranu; w nowszym iOS najpierw <span class="key">•••</span>).</li>
-        <li>Przewiń listę i wybierz <b>„Do ekranu początkowego”</b>.</li>
-        <li>Stuknij <b>„Dodaj”</b>, zamknij Safari i otwórz <b>Chorwacki</b> z ikony na ekranie.</li>
+        <li>Stuknij <b>Udostępnij</b> (w nowszym iOS najpierw <b>•••</b>).</li>
+        <li>Wybierz <b>„Do ekranu początkowego”</b> i <b>„Dodaj”</b>.</li>
+        <li>Otwieraj <b>Chorwacki</b> z ikony.</li>
       </ol>`;
   }
   if (isAndroid()) {
     return `
-      <p><b>Android:</b> zainstaluj aplikację — będzie działać offline jak zwykła apka.</p>
       ${installEvent ? `<button class="btn primary block" id="install-btn">Zainstaluj aplikację</button>` : ''}
       <ol class="steps">
-        <li>W Chrome stuknij menu <span class="key">⋮</span> (prawy górny róg).</li>
-        <li>Wybierz <b>„Zainstaluj aplikację”</b> lub <b>„Dodaj do ekranu głównego”</b>.</li>
-        <li>Otwórz <b>Chorwacki</b> z ikony na ekranie.</li>
+        <li>W Chrome stuknij <b>⋮</b> (prawy górny róg).</li>
+        <li>Wybierz <b>„Zainstaluj aplikację”</b>.</li>
+        <li>Otwieraj <b>Chorwacki</b> z ikony.</li>
       </ol>`;
   }
   return `
-    <p>Na telefonie otwórz ten adres i dodaj aplikację do ekranu głównego (iPhone: Safari → Udostępnij → „Do ekranu początkowego”; Android: Chrome → ⋮ → „Zainstaluj aplikację”).</p>
+    <p>Na telefonie otwórz ten adres i dodaj aplikację do ekranu głównego.</p>
     ${installEvent ? `<button class="btn primary block" id="install-btn">Zainstaluj na tym komputerze</button>` : ''}`;
 }
 
@@ -165,154 +191,176 @@ function onboarding() {
   app.innerHTML = `
     <div class="topbar"><h1>Witaj!</h1></div>
     <div class="panel">
-      <h2>Najpierw zainstaluj aplikację</h2>
+      <h2>Zainstaluj aplikację</h2>
       ${installInstructions()}
     </div>
-    <div class="panel">
-      <p class="muted small">Postęp zapisuje się tylko na tym urządzeniu. W ustawieniach możesz zapisać kopię do pliku i wczytać ją na innym urządzeniu.</p>
-      <button class="btn block" id="skip">${isIOS() ? 'Rozumiem, ucz się w przeglądarce' : 'Kontynuuj w przeglądarce'}</button>
-    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost block" id="skip">Na razie w przeglądarce</button>
   `;
   bindInstallButton();
   document.getElementById('skip').onclick = () => { setDevice({ onboardingDone: true }); go('home'); };
 }
 
-function cardFace(c) {
+// ---------- review ----------
+
+const ANIM_MS = 110;
+let session = null;
+let history = []; // [{ session, state }] for "back"
+
+function startReview() {
+  session = startSession(planSession(cards, state, new Date()));
+  history = [];
+  go('review');
+}
+
+function cardHTML(c) {
   const dir = state.settings.direction;
-  const front = dir === 'hr-pl' ? c.hr : c.pl;
-  const badge = c.type === 'phrase' ? 'zwrot' : POS[c.pos] || '';
-  return {
-    front: `<div class="badge">${esc(badge)}</div>
-            <div class="front">${esc(front)}${dir === 'hr-pl' ? sayButton(c.hr, 'Odtwórz wymowę') : ''}</div>`,
-    back: `<hr>
-           <div class="answer">${esc(dir === 'hr-pl' ? c.pl : c.hr)}${dir === 'pl-hr' ? sayButton(c.hr, 'Odtwórz wymowę') : ''}</div>
-           <div class="example">
-             <div>${esc(c.example_hr)}${sayButton(c.example_hr, 'Odtwórz przykład')}</div>
-             <div class="pl">${esc(c.example_pl)}</div>
-           </div>
-           ${c.note ? `<div class="note ${c.pl_similarity === 'false_friend' ? 'ff' : ''}">${esc(c.note)}</div>` : ''}`,
+  const front = dir === 'hr-pl'
+    ? `<div class="word">${esc(c.hr)}</div>${sayButton(c.hr, 'Wymowa', 'say-word')}`
+    : `<div class="word">${esc(c.pl)}</div>`;
+  const backWord = dir === 'hr-pl' ? c.pl : c.hr;
+  return `
+    <div class="flash" id="flash">
+      <div class="flash-inner">
+        <div class="face front">${front}</div>
+        <div class="face back">
+          <div class="back-main">
+            <div class="word hr">${esc(backWord)}</div>
+            ${dir === 'pl-hr' ? sayButton(c.hr, 'Wymowa', 'say-word') : ''}
+          </div>
+          <div class="example">
+            <div class="ex-hr">${esc(c.example_hr)}${sayButton(c.example_hr, 'Wymowa przykładu', 'say-small')}</div>
+            <div class="ex-pl">${esc(c.example_pl)}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function review(enterFrom = null) {
+  const id = session && session.queue[0];
+  if (!id) return finishReview();
+  const c = byId.get(id);
+  if (!c) { // card vanished from data (should not happen: retired cards stay in files)
+    session = { ...session, queue: session.queue.slice(1) };
+    return review(enterFrom);
+  }
+  const p = sessionProgress(session);
+  const pct = Math.round((p.done / Math.max(1, p.total)) * 100);
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="icon-btn" data-go="home" aria-label="Zakończ">✕</button>
+      <span class="title">${p.done} / ${p.total}</span>
+      <span class="icon-btn" aria-hidden="true"></span>
+    </div>
+    <div class="progress"><div style="width:${pct}%"></div></div>
+    <div class="stage">${cardHTML(c)}</div>
+    <div class="answers">
+      ${GRADES.map((g) => `<button class="btn answer" data-rate="${g.rating}">${g.label}</button>`).join('')}
+    </div>
+  `;
+  bindGo();
+  bindSay();
+  const flash = document.getElementById('flash');
+  if (enterFrom && !reducedMotion()) {
+    flash.animate(
+      [{ transform: `translateX(${enterFrom === 'right' ? 40 : -40}%)`, opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }],
+      { duration: ANIM_MS, easing: 'ease-out' },
+    );
+  }
+  attachSwipe(flash, {
+    onTap: () => flash.classList.toggle('flipped'),
+    onNext: () => rate(Rating.Good, flash),
+    onBack: () => back(flash),
+  });
+  app.querySelectorAll('[data-rate]').forEach((b) => { b.onclick = () => rate(Number(b.dataset.rate), flash); });
+  keyHandler = (e) => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flash.classList.toggle('flipped'); }
+    const g = GRADES.find((x) => x.key === e.key);
+    if (g) rate(g.rating, flash);
+    if (e.key === 'Backspace') back(flash);
   };
 }
 
-function review(session, revealed = false) {
-  const id = session.queue[0];
-  if (!id) return go('done', session);
-  const c = byId.get(id);
-  if (!c) { // card vanished from data (should not happen: retired cards stay in files)
-    return review({ ...session, queue: session.queue.slice(1) });
-  }
-  const remaining = new Set(session.queue).size;
-  const pct = Math.round((session.done / Math.max(1, session.done + remaining)) * 100);
-  const face = cardFace(c);
-  const intervals = revealed ? previewIntervals(scheduler, state.cards[id], new Date()) : null;
-  app.innerHTML = `
-    <div class="topbar">
-      <button class="btn ghost" data-go="home" aria-label="Zakończ">✕</button>
-      <span class="title">${session.done} / ${session.done + remaining}</span>
-      <button class="btn ghost" id="report">Zgłoś</button>
-    </div>
-    <div class="progress"><div style="width:${pct}%"></div></div>
-    <div class="panel card" id="card">
-      ${face.front}
-      ${revealed ? face.back : ''}
-    </div>
-    ${revealed
-      ? `<div class="grades">${GRADES.map((g) => `<button class="btn grade g${g.key}" data-rate="${g.rating}">${g.label}<small>${intervals[g.rating]}</small></button>`).join('')}</div>`
-      : `<div class="bottom"><button class="btn primary block" id="reveal">Pokaż odpowiedź</button></div>`}
-  `;
-  bindGo();
-  bindSay();
-  document.getElementById('report').onclick = () => openReport(c);
-  if (!revealed) {
-    const r = () => review(session, true);
-    document.getElementById('reveal').onclick = r;
-    document.getElementById('card').onclick = (e) => { if (!e.target.closest('[data-say]')) r(); };
-    keyHandler = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); r(); } };
-  } else {
-    const rate = (rating) => {
-      const res = answer(session, scheduler, state, rating, new Date());
-      setState(res.state);
-      persistOnce();
-      review(res.session);
-    };
-    app.querySelectorAll('[data-rate]').forEach((b) => { b.onclick = () => rate(Number(b.dataset.rate)); });
-    keyHandler = (e) => {
-      const g = GRADES.find((x) => x.key === e.key);
-      if (g) rate(g.rating);
-    };
-  }
+let animating = false;
+
+function animateOut(el, to, done) {
+  if (reducedMotion()) return done();
+  animating = true;
+  const current = getComputedStyle(el).transform;
+  const a = el.animate(
+    [{ transform: current === 'none' ? 'translateX(0)' : current, opacity: 1 }, { transform: `translateX(${to === 'left' ? -120 : 120}%)`, opacity: 0 }],
+    { duration: ANIM_MS * 0.8, easing: 'ease-in', fill: 'forwards' },
+  );
+  a.onfinish = () => { animating = false; done(); };
 }
 
-function sieve(counts, revealed = false) {
-  const id = sieveCandidates(cards, state)[0];
-  if (!id) {
-    app.innerHTML = `
-      <div class="topbar"><button class="btn ghost" data-go="home">✕</button><span class="title">Przesiew</span><span></span></div>
-      <div class="panel center"><div class="big-emoji">✅</div><h2>Przesiane wszystko</h2>
-      <p>Znane: ${counts.known} · do nauki: ${counts.unknown}</p></div>
-      <button class="btn primary block" data-go="home">Wróć</button>`;
-    bindGo();
+function rate(rating, el) {
+  if (animating || !session.queue.length) return;
+  history.push({ session, state });
+  if (history.length > 50) history.shift();
+  const now = new Date();
+  const res = answer(session, scheduler, state, rating, now);
+  session = res.session;
+  setState(markGoal(cards, res.state, now));
+  persistOnce();
+  animateOut(el, 'left', () => review('right'));
+}
+
+function back(el) {
+  if (animating) return;
+  const prev = history.pop();
+  if (!prev) {
+    el.animate([{ transform: 'translateX(12px)' }, { transform: 'translateX(0)' }], { duration: ANIM_MS });
     return;
   }
-  const c = byId.get(id);
-  const face = cardFace(c);
-  app.innerHTML = `
-    <div class="topbar">
-      <button class="btn ghost" data-go="home" aria-label="Zakończ">✕</button>
-      <span class="title" aria-label="Znane ${counts.known}, do nauki ${counts.unknown}">Przesiew · ✓ ${counts.known} · ✗ ${counts.unknown}</span>
-      <button class="btn ghost" id="report">Zgłoś</button>
-    </div>
-    <div class="panel card" id="card">
-      ${face.front}
-      ${revealed ? face.back : '<p class="muted small">Czy znasz to słowo? Stuknij, żeby sprawdzić.</p>'}
-    </div>
-    ${revealed
-      ? `<div class="sieve-buttons">
-           <button class="btn no" id="no">Nie wiedziałem</button>
-           <button class="btn yes" id="yes">Wiedziałem</button>
-         </div>`
-      : `<div class="bottom"><button class="btn primary block" id="reveal">Pokaż</button></div>`}
-  `;
-  bindGo();
-  bindSay();
-  document.getElementById('report').onclick = () => openReport(c);
-  if (!revealed) {
-    const r = () => sieve(counts, true);
-    document.getElementById('reveal').onclick = r;
-    document.getElementById('card').onclick = (e) => { if (!e.target.closest('[data-say]')) r(); };
-    keyHandler = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); r(); } };
-  } else {
-    const decide = (known) => {
-      setState(sieveCard(scheduler, state, id, known, new Date()));
-      persistOnce();
-      sieve({ known: counts.known + (known ? 1 : 0), unknown: counts.unknown + (known ? 0 : 1) });
-    };
-    document.getElementById('yes').onclick = () => decide(true);
-    document.getElementById('no').onclick = () => decide(false);
-    keyHandler = (e) => {
-      if (e.key === '1' || e.key === 'ArrowLeft') decide(false);
-      if (e.key === '2' || e.key === 'ArrowRight') decide(true);
-    };
-  }
+  session = prev.session;
+  setState(prev.state);
+  animateOut(el, 'right', () => review('left'));
 }
 
-function done(session) {
-  const st = stats(cards, state, new Date());
-  app.innerHTML = `
-    <div class="topbar"><span></span><span class="title">Koniec sesji</span><span></span></div>
-    <div class="panel center">
-      <div class="big-emoji">🎉</div>
-      <h2>Dobra robota!</h2>
-      <p>Przerobione fiszki: ${session.done}${session.again ? ` · powtórzone od nowa: ${session.again}` : ''}</p>
-      <p>Seria: ${st.streak} ${plural(st.streak, 'dzień', 'dni', 'dni')}</p>
-    </div>
-    <button class="btn primary block" data-go="home">Wróć</button>
-  `;
-  bindGo();
+function finishReview() {
+  session = null;
+  history = [];
+  go('home');
 }
+
+/** Tap = flip; horizontal swipe left = next ("Znam"), right = back. */
+function attachSwipe(el, { onTap, onNext, onBack }) {
+  let x0 = null;
+  let y0 = 0;
+  let dx = 0;
+  let id = null;
+  const THRESHOLD = 60;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('[data-say]') || animating) return;
+    x0 = e.clientX;
+    y0 = e.clientY;
+    dx = 0;
+    id = e.pointerId;
+    el.setPointerCapture(id);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (x0 === null || e.pointerId !== id) return;
+    dx = e.clientX - x0;
+    if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(e.clientY - y0)) el.style.transform = `translateX(${dx}px)`;
+  });
+  const end = (e) => {
+    if (x0 === null || e.pointerId !== id) return;
+    x0 = null;
+    if (Math.abs(dx) < 8) { el.style.transform = ''; onTap(); return; }
+    if (dx <= -THRESHOLD) return onNext();
+    if (dx >= THRESHOLD) return onBack();
+    el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0)' }], { duration: ANIM_MS });
+    el.style.transform = '';
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', (e) => { x0 = null; el.style.transform = ''; });
+}
+
+// ---------- settings ----------
 
 async function settings() {
-  const reports = activeReports(state);
   const persisted = await isPersisted();
   app.innerHTML = `
     <div class="topbar">
@@ -322,8 +370,8 @@ async function settings() {
     <div class="settings">
       <section class="panel">
         <div class="field">
-          <label for="newPerDay">Nowe fiszki dziennie</label>
-          <input type="number" id="newPerDay" min="0" max="50" inputmode="numeric" value="${state.settings.newPerDay}">
+          <label for="newPerDay">Nowe fiszki na sesję (dzienne minimum)</label>
+          <input type="number" id="newPerDay" min="1" max="50" inputmode="numeric" value="${state.settings.newPerDay}">
         </div>
         <div class="field">
           <label for="direction">Kierunek</label>
@@ -336,36 +384,25 @@ async function settings() {
       <section class="panel">
         <h2>Kopia postępu</h2>
         <p class="muted small">Ostatnia kopia: ${device.lastBackupAt ? new Date(device.lastBackupAt).toLocaleDateString('pl-PL') : 'nigdy'}.
-        Import <b>scala</b> postęp z pliku z obecnym (dla każdej fiszki wygrywa nowsza powtórka), więc można przenosić postęp między urządzeniami.</p>
+        Wczytanie pliku <b>łączy</b> postęp z obecnym, więc można przenosić go między urządzeniami.</p>
         <div class="row">
-          <button class="btn primary" id="export">Zapisz do pliku</button>
+          <button class="btn" id="export">Zapisz do pliku</button>
           <button class="btn" id="import">Wczytaj z pliku</button>
         </div>
         <input type="file" id="import-file" accept="application/json,.json" hidden>
       </section>
       <section class="panel">
-        <h2>Zgłoszenia fiszek (${reports.length})</h2>
-        ${reports.length
-          ? `<textarea id="reports-text" rows="6" readonly>${esc(formatReports(state, byId))}</textarea>
-             <div class="row" style="margin-top:10px">
-               <button class="btn primary" id="copy-reports">Kopiuj</button>
-               <button class="btn" id="clear-reports">Wyczyść</button>
-             </div>`
-          : '<p class="muted small">Brak zgłoszeń. Podczas nauki użyj przycisku „Zgłoś”, gdy fiszka jest błędna.</p>'}
-      </section>
-      <section class="panel">
         <h2>Urządzenie</h2>
-        <p class="small">Trwałe przechowywanie: <b>${persisted === null ? 'nieobsługiwane' : persisted ? 'włączone' : 'niewłączone'}</b>
-        ${persisted === false ? '<br><span class="muted">Przeglądarka może je przyznać dopiero po instalacji aplikacji lub dłuższym używaniu.</span>' : ''}</p>
+        <p class="small">Trwałe przechowywanie: <b>${persisted === null ? 'nieobsługiwane' : persisted ? 'włączone' : 'niewłączone'}</b></p>
         ${persisted === false ? '<button class="btn block" id="persist">Poproś o trwałe przechowywanie</button>' : ''}
-        <p class="small" style="margin-top:10px">Wymowa (głos chorwacki): <b>${hasVoice() ? 'dostępna' : 'brak głosu hr-HR na tym urządzeniu'}</b></p>
+        <p class="small" style="margin-top:10px">Wymowa (głos chorwacki): <b>${hasVoice() ? 'dostępna' : 'brak głosu hr-HR'}</b></p>
         <p class="small">Tryb: <b>${isStandalone() ? 'zainstalowana aplikacja' : 'przeglądarka'}</b></p>
         ${isStandalone() ? '' : `<details><summary>Jak zainstalować?</summary>${installInstructions()}</details>`}
       </section>
       <section class="panel">
         <p class="muted small">Wersja: ${esc(swVersion || '—')} · ${cards.filter((c) => !c.retired).length} fiszek.<br>
         Powtórki: <a href="https://github.com/open-spaced-repetition/ts-fsrs">ts-fsrs</a> (MIT).
-        Kolejność słów na podstawie list frekwencyjnych <a href="https://github.com/hermitdave/FrequencyWords">FrequencyWords</a> (CC BY-SA 4.0).</p>
+        Kolejność słów na podstawie <a href="https://github.com/hermitdave/FrequencyWords">FrequencyWords</a> (CC BY-SA 4.0).</p>
       </section>
     </div>
   `;
@@ -373,7 +410,7 @@ async function settings() {
   bindInstallButton();
   const npd = document.getElementById('newPerDay');
   npd.onchange = () => {
-    const v = Math.max(0, Math.min(50, Math.round(Number(npd.value) || 0)));
+    const v = Math.max(1, Math.min(50, Math.round(Number(npd.value) || 10)));
     npd.value = v;
     setState(updateSettings(state, { newPerDay: v }));
     toast('Zapisano');
@@ -398,26 +435,6 @@ async function settings() {
       toast(e instanceof ImportError ? e.message : 'Nie udało się wczytać pliku.', 5000);
     }
   };
-  const copy = document.getElementById('copy-reports');
-  if (copy) {
-    copy.onclick = async () => {
-      const text = document.getElementById('reports-text').value;
-      try {
-        await navigator.clipboard.writeText(text);
-        toast('Skopiowano');
-      } catch {
-        const ta = document.getElementById('reports-text');
-        ta.select();
-        document.execCommand('copy');
-        toast('Skopiowano');
-      }
-    };
-    document.getElementById('clear-reports').onclick = () => {
-      if (!confirm('Usunąć wszystkie zgłoszenia? Zrób to dopiero, gdy je przekażesz.')) return;
-      setState(clearReports(state));
-      settings();
-    };
-  }
   const p = document.getElementById('persist');
   if (p) p.onclick = async () => { const ok = await requestPersist(); toast(ok ? 'Włączono trwałe przechowywanie' : 'Przeglądarka odmówiła — spróbuj po instalacji'); settings(); };
 }
@@ -450,25 +467,6 @@ async function exportBackup() {
   }
 }
 
-function openReport(card) {
-  const dlg = document.getElementById('report-dialog');
-  document.getElementById('report-card').textContent = `${card.hr} — ${card.pl}`;
-  const note = document.getElementById('report-note');
-  note.value = '';
-  const prevKeys = keyHandler;
-  keyHandler = null;
-  dlg.onclose = () => {
-    keyHandler = prevKeys;
-    if (dlg.returnValue === 'ok') {
-      setState(addReport(state, card.id, note.value, new Date()));
-      toast('Zgłoszenie zapisane (Ustawienia → Zgłoszenia)');
-    }
-  };
-  dlg.returnValue = '';
-  dlg.showModal();
-  note.focus();
-}
-
 let persistAsked = false;
 function persistOnce() {
   if (persistAsked) return;
@@ -478,9 +476,8 @@ function persistOnce() {
 
 // ---------- events ----------
 
-let keyHandler = null;
 document.addEventListener('keydown', (e) => {
-  if (e.target.closest && e.target.closest('input, textarea, select, dialog')) return;
+  if (e.target.closest && e.target.closest('input, textarea, select')) return;
   if (keyHandler) keyHandler(e);
 });
 
@@ -491,6 +488,7 @@ function bindGo() {
 
 function bindSay() {
   app.querySelectorAll('[data-say]').forEach((b) => {
+    b.addEventListener('pointerdown', (e) => e.stopPropagation());
     b.onclick = (e) => { e.stopPropagation(); speak(b.dataset.say); };
   });
 }
@@ -501,7 +499,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   if (view === 'onboarding') onboarding();
 });
 
-// The storage of another tab/window changed (e.g. two tabs open) — reload state.
+// Another tab changed the progress — reload it.
 window.addEventListener('storage', (e) => {
   if (e.key && e.key.startsWith('chorwacki.progress')) {
     state = loadProgress();
@@ -509,7 +507,7 @@ window.addEventListener('storage', (e) => {
   }
 });
 
-// Re-render home when coming back to the app on another day.
+// Re-render home when coming back to the app (e.g. on another day).
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && view === 'home') home();
 });
@@ -519,16 +517,14 @@ function registerServiceWorker() {
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!hadController) return; // first install, nothing to refresh
-    if (view === 'home' || view === 'onboarding' || view === 'settings') location.reload();
-    else pendingReload = true; // reload after the current session
+    if (view === 'review') pendingReload = true; // reload after the session
+    else location.reload();
   });
   navigator.serviceWorker.addEventListener('message', (e) => {
     if (e.data && e.data.type === 'version') swVersion = e.data.version;
   });
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
-    const askVersion = () => navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage({ type: 'version' });
-    askVersion();
-    // check for a new version whenever the app is opened again
+    if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: 'version' });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
   }).catch((e) => console.warn('SW nie zarejestrowany', e));
 }

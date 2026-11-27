@@ -19,7 +19,7 @@ emocje i opinie). Projekt rozwijany w wielu sesjach — ten plik jest źródłem
 index.html              powłoka aplikacji
 css/app.css             style
 js/app.js               UI (widoki, zdarzenia) — jedyny moduł dotykający DOM
-js/session.js           logika sesji dziennej i przesiewu (czysta, testowana)
+js/session.js           logika sesji dziennej, minimum i serii (czysta, testowana)
 js/state.js             stan postępu: tworzenie, scalanie, import/eksport (czysta, testowana)
 js/storage.js           localStorage + navigator.storage.persist
 js/data.js              wczytanie fiszek z data/
@@ -72,14 +72,23 @@ Node ≥ 20. Brak `npm install` — nie ma zależności.
 
 ## Założenia aplikacji
 
+Użytkownik chce prostoty: mało tekstu, szybkie przechodzenie, nic, co rozprasza.
+Odpowiedzi do użytkownika: krótko.
+
 - Kierunek domyślny PL→HR (do zmiany w ustawieniach). Jeden stan FSRS na fiszkę.
-- Oceny: nie wiem / trudne / dobrze / łatwe (= Again / Hard / Good / Easy w FSRS).
-- Sesja dzienna (~10–15 min): najpierw zaległe powtórki (limit na sesję), potem nowe
-  według `rank` (domyślnie 10 dziennie). Przy dużych zaległościach — bez nowych.
-- Przesiew: szybkie przejście przez nowe fiszki (wiedziałem / nie wiedziałem).
-  Znane dostają od razu długi odstęp i nie liczą się do dziennego limitu.
-- Wymowa: `speechSynthesis` z głosem hr-HR; przycisk ukryty, gdy brak głosu.
-- Zgłoszenia fiszek z notatką → lista do skopiowania w ustawieniach.
+- Fiszka: przód = samo słowo; tył = słowo HR + głośnik, na dole przykład HR + PL.
+  Bez części mowy i bez notatek (`note` zostaje tylko w danych). Fiszka kwadratowa.
+- Stuknięcie obraca fiszkę (w kółko). Swipe w lewo = dalej („Znam”), w prawo = cofnij
+  (cofa ostatnią odpowiedź). Animacje bardzo krótkie (~100 ms), ale widoczne.
+- Dwie oceny, szare przyciski: „Ne znam” (= Again) i „Znam” (= Good).
+  Jeden krok nauki 10 min: „Znam” od razu zalicza, „Ne znam” wraca w tej samej sesji.
+- Dzienne minimum: zaległe powtórki + `newPerDay` nowych (domyślnie 10). Postęp dnia
+  liczony ze stanu, więc wyjście i powrót kontynuuje („2 / 10”). Po minimum:
+  „Ucz się dalej (+10)” — kolejne sesje tego samego dnia. Przy dużych zaległościach bez nowych.
+- Seria dni = dni z zaliczonym minimum; animacja płomienia na stronie głównej.
+- Strona główna: seria u góry, „Dziś X / Y” + przycisk na dole ekranu.
+- Bez przesiewu i bez zgłoszeń (usunięte na życzenie użytkownika).
+- Wymowa: `speechSynthesis` z głosem hr-HR; prosta szara ikona głośnika, ukryta, gdy brak głosu.
 - Postęp: localStorage + `navigator.storage.persist()`. Eksport/import pliku JSON,
   przypomnienie o kopii co 7 dni. Import scala (nie nadpisuje).
 - iOS: postęp z Safari nie przechodzi do zainstalowanej apki → przy pierwszym
@@ -90,7 +99,7 @@ Node ≥ 20. Brak `npm install` — nie ma zależności.
 1. **(zrobione)** Zasady, aplikacja PWA, walidacja + testy, pierwsza partia 305 fiszek
    (rank wg listy frekwencyjnej + priorytety), przegląd subagentem i poprawki.
    Niewprowadzone uwagi z przeglądu: `docs/backlog.md`.
-2. Poprawki po uwagach i zgłoszeniach użytkownika, wybór tematu dla nowych fiszek
+2. **(w toku)** Uproszczenie UI po pierwszym teście (zrobione), poprawki treści, wybór tematu dla nowych fiszek
    (np. restauracja przed wyjazdem), rozbudowa do ok. 1000 fiszek.
 3. Automatyczna synchronizacja postępu (np. prywatny gist), kolejne partie
    po 300–500 aż do 3000, eksport talii do Anki.

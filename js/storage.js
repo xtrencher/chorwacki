@@ -31,6 +31,7 @@ export function loadDevice() {
     onboardingDone: !!d.onboardingDone,
     lastBackupAt: d.lastBackupAt || null,
     lastBackupReminderAt: d.lastBackupReminderAt || null,
+    celebratedDay: d.celebratedDay || null,
   };
 }
 
