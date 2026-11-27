@@ -259,7 +259,7 @@ function sieve(counts, revealed = false) {
   app.innerHTML = `
     <div class="topbar">
       <button class="btn ghost" data-go="home" aria-label="Zakończ">✕</button>
-      <span class="title">Przesiew · znane ${counts.known} · do nauki ${counts.unknown}</span>
+      <span class="title" aria-label="Znane ${counts.known}, do nauki ${counts.unknown}">Przesiew · ✓ ${counts.known} · ✗ ${counts.unknown}</span>
       <button class="btn ghost" id="report">Zgłoś</button>
     </div>
     <div class="panel card" id="card">
