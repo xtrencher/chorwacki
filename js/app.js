@@ -203,7 +203,8 @@ function onboarding() {
 
 // ---------- review ----------
 
-const ANIM_MS = 110;
+const ANIM_OUT_MS = 50;
+const ANIM_IN_MS = 70;
 let session = null;
 let history = []; // [{ session, state }] for "back"
 
@@ -256,7 +257,8 @@ function review(enterFrom = null) {
     <div class="progress"><div style="width:${pct}%"></div></div>
     <div class="stage">${cardHTML(c)}</div>
     <div class="answers">
-      ${GRADES.map((g) => `<button class="btn answer" data-rate="${g.rating}">${g.label}</button>`).join('')}
+      <button class="btn answer" id="no">${GRADES[0].label}</button>
+      <button class="btn answer" id="yes">Pokaż</button>
     </div>
   `;
   bindGo();
@@ -265,19 +267,28 @@ function review(enterFrom = null) {
   if (enterFrom && !reducedMotion()) {
     flash.animate(
       [{ transform: `translateX(${enterFrom === 'right' ? 40 : -40}%)`, opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }],
-      { duration: ANIM_MS, easing: 'ease-out' },
+      { duration: ANIM_IN_MS, easing: 'ease-out' },
     );
   }
+  // Right button: first "Pokaż" (flips the card), then "Znam" (next card).
+  const yes = document.getElementById('yes');
+  let revealed = false;
+  const flip = () => {
+    flash.classList.toggle('flipped');
+    if (!revealed) { revealed = true; yes.textContent = GRADES[1].label; }
+  };
+  const right = () => (revealed ? rate(Rating.Good, flash) : flip());
   attachSwipe(flash, {
-    onTap: () => flash.classList.toggle('flipped'),
+    onTap: flip,
     onNext: () => rate(Rating.Good, flash),
     onBack: () => back(flash),
   });
-  app.querySelectorAll('[data-rate]').forEach((b) => { b.onclick = () => rate(Number(b.dataset.rate), flash); });
+  document.getElementById('no').onclick = () => rate(Rating.Again, flash);
+  yes.onclick = right;
   keyHandler = (e) => {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flash.classList.toggle('flipped'); }
-    const g = GRADES.find((x) => x.key === e.key);
-    if (g) rate(g.rating, flash);
+    if (e.key === ' ') { e.preventDefault(); flip(); }
+    if (e.key === 'Enter' || e.key === '2') { e.preventDefault(); right(); }
+    if (e.key === '1') rate(Rating.Again, flash);
     if (e.key === 'Backspace') back(flash);
   };
 }
@@ -290,7 +301,7 @@ function animateOut(el, to, done) {
   const current = getComputedStyle(el).transform;
   const a = el.animate(
     [{ transform: current === 'none' ? 'translateX(0)' : current, opacity: 1 }, { transform: `translateX(${to === 'left' ? -120 : 120}%)`, opacity: 0 }],
-    { duration: ANIM_MS * 0.8, easing: 'ease-in', fill: 'forwards' },
+    { duration: ANIM_OUT_MS, easing: 'ease-in', fill: 'forwards' },
   );
   a.onfinish = () => { animating = false; done(); };
 }
@@ -311,7 +322,7 @@ function back(el) {
   if (animating) return;
   const prev = history.pop();
   if (!prev) {
-    el.animate([{ transform: 'translateX(12px)' }, { transform: 'translateX(0)' }], { duration: ANIM_MS });
+    el.animate([{ transform: 'translateX(12px)' }, { transform: 'translateX(0)' }], { duration: ANIM_IN_MS });
     return;
   }
   session = prev.session;
@@ -351,7 +362,7 @@ function attachSwipe(el, { onTap, onNext, onBack }) {
     if (Math.abs(dx) < 8) { el.style.transform = ''; onTap(); return; }
     if (dx <= -THRESHOLD) return onNext();
     if (dx >= THRESHOLD) return onBack();
-    el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0)' }], { duration: ANIM_MS });
+    el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0)' }], { duration: ANIM_IN_MS });
     el.style.transform = '';
   };
   el.addEventListener('pointerup', end);

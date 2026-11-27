@@ -81,8 +81,10 @@ Odpowiedzi do użytkownika: krótko.
 - Fiszka: przód = samo słowo; tył = słowo HR + głośnik, na dole przykład HR + PL.
   Bez części mowy i bez notatek (`note` zostaje tylko w danych). Fiszka kwadratowa.
 - Stuknięcie obraca fiszkę (w kółko). Swipe w lewo = dalej („Znam”), w prawo = cofnij
-  (cofa ostatnią odpowiedź). Animacje bardzo krótkie (~100 ms), ale widoczne.
-- Dwie oceny, szare przyciski: „Ne znam” (= Again) i „Znam” (= Good).
+  (cofa ostatnią odpowiedź). Przejście błyskawiczne (~50 ms wyjazd + ~70 ms wjazd), ale widoczne.
+- Bez niebieskich akcentów i bez przewijania/„gumowania” ekranu (overscroll).
+- Dwie oceny, szare przyciski tuż pod fiszką: „Ne znam” (= Again) i prawy, który najpierw
+  jest „Pokaż” (odwraca fiszkę), a potem „Znam” (= Good, następna).
   Jeden krok nauki 10 min: „Znam” od razu zalicza, „Ne znam” wraca w tej samej sesji.
 - Dzienne minimum: zaległe powtórki + `newPerDay` nowych (domyślnie 10). Postęp dnia
   liczony ze stanu, więc wyjście i powrót kontynuuje („2 / 10”). Po minimum:
