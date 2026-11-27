@@ -43,5 +43,5 @@ Zapisane tak, jak zostały przekazane. Priorytet: prostota, mniej tekstu, szybko
 10. **Animacja serii dni (streak)** na stronie głównej.
 11. **Strona główna:** „Dzisiejsza sesja” z przyciskiem „Zacznij naukę” na dole ekranu
     (wchodzisz i klikasz).
-12. **Przesiew:** niezrozumiały — najpierw wyjaśnić użytkownikowi, potem zdecydować.
+12. **Usunąć przesiew** (decyzja użytkownika: zakładamy, że nie zna słów; wszystkie idą przez normalną naukę).
 13. Odpowiedzi do użytkownika: krótko, bez długich wyjaśnień.
