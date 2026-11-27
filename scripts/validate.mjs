@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 export const TAGS = new Set([
   'rozmowa', 'emocje', 'opinie', 'jedzenie', 'restauracja', 'kelner', 'studia', 'firma', 'silownia',
   'rodzina', 'przyjaciele', 'podroze', 'czas', 'miejsce', 'codzienne', 'praca', 'zakupy', 'zdrowie', 'pogoda',
+  'dom', 'natura', 'internet', 'sport', 'charakter', 'kultura', 'transport', 'pieniadze',
 ]);
 export const POS = new Set(['noun', 'verb', 'adj', 'adv', 'pron', 'prep', 'conj', 'part', 'interj', 'num', 'phrase']);
 export const SIMILARITY = new Set(['transparent', 'partial', 'opaque', 'false_friend']);

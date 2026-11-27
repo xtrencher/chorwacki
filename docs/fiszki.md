@@ -48,7 +48,8 @@ Wszystkie pola poza `retired` są obowiązkowe.
 `rozmowa` (towarzyskie, small talk), `emocje`, `opinie`, `jedzenie`, `restauracja`,
 `kelner` (od strony obsługi), `studia`, `firma` (własna firma online), `silownia`,
 `rodzina`, `przyjaciele`, `podroze`, `czas`, `miejsce`, `codzienne`, `praca`, `zakupy`,
-`zdrowie`, `pogoda`.
+`zdrowie`, `pogoda`, `dom`, `natura`, `internet`, `sport`, `charakter`, `kultura`,
+`transport`, `pieniadze`.
 Nowy tag → najpierw dopisz go tutaj i w `scripts/validate.mjs` (`TAGS`).
 
 ### `pl_similarity`
