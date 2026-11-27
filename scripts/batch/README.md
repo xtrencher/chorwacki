@@ -18,3 +18,7 @@ Tak powstało ~2400 fiszek w etapie 2. Ścieżki w plikach wskazują katalog rob
    fiszki; opublikowanych nie usuwaj — dostają `retired: true`.
 
 Po scaleniu: dopisz nowe pliki do `PRECACHE` w `sw.js`, podbij `VERSION`, `npm test`.
+
+`tiers.json` — ważność (1–5, po korekcie „przezroczyste o poziom niżej”) każdej fiszki z rank > 305.
+Partie źródłowe (`gen/*.txt`) były w katalogu tymczasowym sesji; przy kolejnej rozbudowie wczytuj
+tiery istniejących fiszek z tego pliku zamiast z `gen/b*.txt`.
