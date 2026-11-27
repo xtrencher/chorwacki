@@ -71,6 +71,7 @@ function go(v, ...args) {
     return;
   }
   window.scrollTo(0, 0);
+  app.className = v === 'review' ? 'review-mode' : '';
   VIEWS[v](...args);
 }
 
@@ -255,7 +256,7 @@ function review(enterFrom = null) {
       <span class="icon-btn" aria-hidden="true"></span>
     </div>
     <div class="progress"><div style="width:${pct}%"></div></div>
-    <div class="stage">${cardHTML(c)}</div>
+    <div class="swipe-area" id="swipe-area"><div class="stage">${cardHTML(c)}</div></div>
     <div class="answers">
       <button class="btn answer" id="no">${GRADES[0].label}</button>
       <button class="btn answer" id="yes">Pokaż</button>
@@ -278,7 +279,7 @@ function review(enterFrom = null) {
     if (!revealed) { revealed = true; yes.textContent = GRADES[1].label; }
   };
   const right = () => (revealed ? rate(Rating.Good, flash) : flip());
-  attachSwipe(flash, {
+  attachSwipe(document.getElementById('swipe-area'), flash, {
     onTap: flip,
     onNext: () => rate(Rating.Good, flash),
     onBack: () => back(flash),
@@ -336,22 +337,27 @@ function finishReview() {
   go('home');
 }
 
-/** Tap = flip; horizontal swipe left = next ("Znam"), right = back. */
-function attachSwipe(el, { onTap, onNext, onBack }) {
+/**
+ * Swipe anywhere in `area` moves the card `el`: left = next ("Znam"), right = back.
+ * A tap on the card flips it.
+ */
+function attachSwipe(area, el, { onTap, onNext, onBack }) {
   let x0 = null;
   let y0 = 0;
   let dx = 0;
   let id = null;
-  const THRESHOLD = 60;
-  el.addEventListener('pointerdown', (e) => {
+  let onCard = false;
+  const THRESHOLD = 50;
+  area.addEventListener('pointerdown', (e) => {
     if (e.target.closest('[data-say]') || animating) return;
     x0 = e.clientX;
     y0 = e.clientY;
     dx = 0;
     id = e.pointerId;
-    el.setPointerCapture(id);
+    onCard = !!e.target.closest('#flash');
+    area.setPointerCapture(id);
   });
-  el.addEventListener('pointermove', (e) => {
+  area.addEventListener('pointermove', (e) => {
     if (x0 === null || e.pointerId !== id) return;
     dx = e.clientX - x0;
     if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(e.clientY - y0)) el.style.transform = `translateX(${dx}px)`;
@@ -359,14 +365,14 @@ function attachSwipe(el, { onTap, onNext, onBack }) {
   const end = (e) => {
     if (x0 === null || e.pointerId !== id) return;
     x0 = null;
-    if (Math.abs(dx) < 8) { el.style.transform = ''; onTap(); return; }
+    if (Math.abs(dx) < 8) { el.style.transform = ''; if (onCard) onTap(); return; }
     if (dx <= -THRESHOLD) return onNext();
     if (dx >= THRESHOLD) return onBack();
     el.animate([{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0)' }], { duration: ANIM_IN_MS });
     el.style.transform = '';
   };
-  el.addEventListener('pointerup', end);
-  el.addEventListener('pointercancel', (e) => { x0 = null; el.style.transform = ''; });
+  area.addEventListener('pointerup', end);
+  area.addEventListener('pointercancel', () => { x0 = null; el.style.transform = ''; });
 }
 
 // ---------- settings ----------

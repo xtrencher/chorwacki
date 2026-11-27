@@ -80,10 +80,12 @@ Odpowiedzi do użytkownika: krótko.
 - Kierunek domyślny PL→HR (do zmiany w ustawieniach). Jeden stan FSRS na fiszkę.
 - Fiszka: przód = samo słowo; tył = słowo HR + głośnik, na dole przykład HR + PL.
   Bez części mowy i bez notatek (`note` zostaje tylko w danych). Fiszka kwadratowa.
+- Fiszka u góry; swipe działa na całym wolnym miejscu między fiszką a przyciskami.
 - Stuknięcie obraca fiszkę (w kółko). Swipe w lewo = dalej („Znam”), w prawo = cofnij
   (cofa ostatnią odpowiedź). Przejście błyskawiczne (~50 ms wyjazd + ~70 ms wjazd), ale widoczne.
 - Bez niebieskich akcentów i bez przewijania/„gumowania” ekranu (overscroll).
-- Dwie oceny, szare przyciski tuż pod fiszką: „Ne znam” (= Again) i prawy, który najpierw
+- Bez `viewport-fit=cover`: na Androidzie treść wchodziła pod pasek nawigacji (ucięte przyciski).
+- Dwie oceny, szare przyciski na dole ekranu: „Ne znam” (= Again) i prawy, który najpierw
   jest „Pokaż” (odwraca fiszkę), a potem „Znam” (= Good, następna).
   Jeden krok nauki 10 min: „Znam” od razu zalicza, „Ne znam” wraca w tej samej sesji.
 - Dzienne minimum: zaległe powtórki + `newPerDay` nowych (domyślnie 10). Postęp dnia

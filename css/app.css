@@ -46,8 +46,9 @@ button:focus-visible { outline: 2px solid var(--muted); outline-offset: 2px; }
 main {
   max-width: 520px;
   margin: 0 auto;
+  min-height: 100vh;
   min-height: 100dvh;
-  padding: calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  padding: 10px 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -128,12 +129,16 @@ p { margin: 0 0 8px; }
 .mini-stats { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
 .mini-stats b { color: var(--text); }
 
-.session-panel { position: sticky; bottom: calc(env(safe-area-inset-bottom) + 8px); display: flex; flex-direction: column; gap: 12px; }
+.session-panel { display: flex; flex-direction: column; gap: 12px; }
 .today-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 1.05rem; }
 .today-row b { font-variant-numeric: tabular-nums; }
 
 /* ---------- flashcard ---------- */
 
+/* review: fixed full-height layout, card at the top, answers at the bottom,
+   the free space between them is a swipe area */
+main.review-mode { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.swipe-area { flex: 1; min-height: 0; touch-action: pan-y; }
 .stage { display: flex; justify-content: center; margin-top: 6px; }
 .flash {
   width: 100%;
@@ -185,7 +190,7 @@ p { margin: 0 0 8px; }
 .say-word svg { width: 28px; height: 28px; }
 .say-small svg { width: 20px; height: 20px; }
 
-.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: min(100%, 56vh); margin: 0 auto; }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
 .answer { min-height: 58px; font-size: 1.05rem; }
 
 /* ---------- forms / misc ---------- */
@@ -209,7 +214,7 @@ a { color: inherit; }
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom) + 96px);
+  bottom: 96px;
   transform: translateX(-50%);
   background: #111827;
   color: #fff;
