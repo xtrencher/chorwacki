@@ -69,6 +69,8 @@ Node ≥ 20. Brak `npm install` — nie ma zależności.
 10. Po większej partii nowych fiszek: osobny przegląd świeżym okiem (subagent)
     według `docs/fiszki.md`, potem poprawki.
 11. Interfejs i komunikaty po polsku. Kod, nazwy zmiennych i komentarze mogą być po angielsku.
+12. **Publikacja:** użytkownik nie chce nic robić ręcznie na GitHubie. Po zielonym `npm test`
+    wypchnij gotową pracę także na `main` (fast-forward) — GitHub Pages opublikuje ją sama.
 
 ## Założenia aplikacji
 
