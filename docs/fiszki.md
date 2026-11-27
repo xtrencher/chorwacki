@@ -70,11 +70,13 @@ Tylko to, co **różni się od polskiego** albo jest pułapką. Krótko, po pols
 - kiedy używać (rejestr: potoczne / grzeczne, „ti” vs „Vi”),
 - pułapki: fałszywi przyjaciele, mylące podobieństwa.
 
-**Czasowniki — format obowiązkowy** (walidator sprawdza początek):
+**Czasowniki — format obowiązkowy** (walidator to sprawdza):
 
 ```
 1 os.: <forma 1 os. l. poj. cz. teraźn.> · <ndk.|dk.|dwuaspektowy>, para: <drugi czasownik z pary> [· dalsze uwagi]
 ```
+
+Gdy czasownik jest fałszywym przyjacielem, notatka zaczyna się od ostrzeżenia, a ten format następuje po nim.
 
 Przykłady:
 

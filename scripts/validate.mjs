@@ -22,7 +22,7 @@ export const SERBIAN = [
   'uraditi', 'uradim', 'uradio', 'uradila', 'bezbedno', 'nedelja', 'nedelju', 'sedi', 'sesti', 'ovde', 'gde',
   'kuvati', 'kuvar', 'pozorište', 'sveska', 'beli', 'belo', 'cena', 'cene', 'mesto', 'mesta',
   'pevati', 'pesma', 'pesmu', 'videti', 'želeti', 'razumeti', 'razumem', 'voleti', 'sećam', 'sećati', 'osećam', 'osećati',
-  'obećati', 'obećavam', 'čovek', 'reč', 'reči', 'leto', 'posle', 'predlog',
+  'čovek', 'reč', 'reči', 'leto', 'posle', 'predlog',
 ];
 const SERBIAN_PATTERNS = [
   { re: /(?<!\p{L})da li(?!\p{L})/iu, msg: '„da li” (po chorwacku: „je li …” / „… li …”)' },
@@ -76,8 +76,8 @@ export function validateCards(cards, { files = [], indexFiles = [] } = {}) {
       if (c.pl_similarity === 'false_friend' && !c.note.startsWith('⚠ Fałszywy przyjaciel:')) {
         err('false_friend: note musi zaczynać się od „⚠ Fałszywy przyjaciel:”');
       }
-      if (c.pos === 'verb' && !/^1 os\.: [^·]+ · (ndk\.|dk\.|dwuaspektowy), para: \S/.test(c.note)) {
-        err('czasownik: note musi zaczynać się od „1 os.: <forma> · ndk.|dk.|dwuaspektowy, para: …”');
+      if (c.pos === 'verb' && !/(^|· |\. )1 os\.: [^·]+ · (ndk\.|dk\.|dwuaspektowy), para: \S/.test(c.note)) {
+        err('czasownik: note musi zawierać „1 os.: <forma> · ndk.|dk.|dwuaspektowy, para: …” (na początku albo po ostrzeżeniu o fałszywym przyjacielu)');
       }
     }
 
@@ -87,6 +87,8 @@ export function validateCards(cards, { files = [], indexFiles = [] } = {}) {
       if (typeof text !== 'string') continue;
       for (const [w, re] of SERBIAN_RES) if (re.test(text)) err(`${f}: serbska/ekawska forma „${w}”`);
       for (const p of SERBIAN_PATTERNS) if (p.re.test(text)) err(`${f}: ${p.msg}`);
+      const bad = text.match(/[^\p{Script=Latin}\s\d.,!?;:'"„“”…\-–—()\/]/gu);
+      if (bad) err(`${f}: niedozwolone znaki „${[...new Set(bad)].join('')}” (np. cyrylica)`);
       if (/[qxyw]/i.test(text)) warnings.push(`${where}: ${f} zawiera q/x/y/w — nietypowe dla chorwackiego`);
     }
 

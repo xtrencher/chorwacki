@@ -22,6 +22,7 @@ const PRECACHE = [
   './js/storage.js',
   './vendor/ts-fsrs/index.mjs',
   './data/index.json',
+  './data/cards-001.json',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
