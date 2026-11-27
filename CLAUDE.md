@@ -106,7 +106,6 @@ Odpowiedzi do użytkownika: krótko.
    (rank wg listy frekwencyjnej + priorytety), przegląd subagentem i poprawki.
    Niewprowadzone uwagi z przeglądu: `docs/backlog.md`.
 2. **(zrobione)** Uproszczenie UI po pierwszym teście; rozbudowa do 2669 fiszek (9 partii
-   tematycznych + przegląd 5 recenzentów). Poprawki treści, wybór tematu dla nowych fiszek
-   (np. restauracja przed wyjazdem), rozbudowa do ok. 1000 fiszek.
-3. Automatyczna synchronizacja postępu (np. prywatny gist), kolejne partie
-   po 300–500 aż do 3000, eksport talii do Anki.
+   tematycznych + przegląd 5 recenzentów). Narzędzia partii: `docs/backlog.md`.
+3. Dalej: poprawki wyglądu i działania wg uwag użytkownika, poprawki treści, ewentualnie
+   automatyczna synchronizacja postępu (np. prywatny gist) i eksport talii do Anki.
